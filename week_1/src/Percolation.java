@@ -8,7 +8,13 @@ By convention, the row and column indices are integers between 1 and n, where (1
  */
 public class Percolation {
     private final WeightedQuickUnionUF wquUF;
+    // this is to avoid backwash
+    private final WeightedQuickUnionUF wquUFNoBottom;
     private final boolean[][] grid;
+    // index of the set of all the top rows
+    private final int topVirtualIndex;
+    // index of the set of all the bottom rows
+    private final int bottomVirtualIndex;
     private int openSites = 0;
 
     // creates n-by-n grid, with all sites initially blocked
@@ -22,7 +28,10 @@ public class Percolation {
                 grid[i][j] = false;
             }
         }
-        wquUF = new WeightedQuickUnionUF(size * size);
+        wquUF = new WeightedQuickUnionUF(size * size + 2);
+        wquUFNoBottom = new WeightedQuickUnionUF(size * size + 1);
+        topVirtualIndex = size * size;
+        bottomVirtualIndex = size * size + 1;
     }
 
     // @throws IllegalArgumentException
@@ -50,18 +59,41 @@ public class Percolation {
         int size = grid.length;
         grid[row - 1][col - 1] = true;
         openSites += 1;
+        int site = toIndex(row, col);
+
+        if (row == 1) {
+            // if in the top row, connect to the virtual site in the top
+            wquUF.union(site, topVirtualIndex);
+            wquUFNoBottom.union(site, topVirtualIndex);
+        }
+        if (row == size) {
+            // if in the bottom row, connect to the virtual site in the bottom
+            wquUF.union(site, bottomVirtualIndex);
+        }
 
         // west
-        if (col > 1 && isOpen(row, col - 1)) wquUF.union(toIndex(row, col), toIndex(row, col - 1));
+        if (col > 1 && isOpen(row, col - 1)) {
+            wquUF.union(site, toIndex(row, col - 1));
+            wquUFNoBottom.union(site, toIndex(row, col - 1));
+        }
 
         // north
-        if (row > 1 && isOpen(row - 1, col)) wquUF.union(toIndex(row, col), toIndex(row - 1, col));
+        if (row > 1 && isOpen(row - 1, col)) {
+            wquUF.union(site, toIndex(row - 1, col));
+            wquUFNoBottom.union(site, toIndex(row - 1, col));
+        }
 
         // east
-        if (col < size && isOpen(row, col + 1)) wquUF.union(toIndex(row, col), toIndex(row, col + 1));
+        if (col < size && isOpen(row, col + 1)) {
+            wquUF.union(site, toIndex(row, col + 1));
+            wquUFNoBottom.union(site, toIndex(row, col + 1));
+        }
 
         // south
-        if (row < size && isOpen(row + 1, col)) wquUF.union(toIndex(row, col), toIndex(row + 1, col));
+        if (row < size && isOpen(row + 1, col)) {
+            wquUF.union(site, toIndex(row + 1, col));
+            wquUFNoBottom.union(site, toIndex(row + 1, col));
+        }
     }
 
     // is the site (row, col) open?
@@ -80,16 +112,10 @@ public class Percolation {
         assertBoundaries(row);
         assertBoundaries(col);
 
-        if (!grid[row - 1][col - 1]) {
-            return false;
-        }
+        // not open? can't be full
+        if (!grid[row-1][col-1]) return false;
 
-        int site = toIndex(row, col);
-        for (var c = 1; c <= grid.length; c += 1) {
-            int rootTop = toIndex(1, c);
-            if (wquUF.connected(rootTop, site)) return true;
-        }
-        return false;
+        return wquUFNoBottom.connected(toIndex(row, col), topVirtualIndex);
     }
 
     // returns the number of open sites
@@ -97,25 +123,20 @@ public class Percolation {
         return openSites;
     }
 
-    // does the system percolate?
+    /*
+     * does the system percolate?
+     *
+     * As was said in the lecture,
+     * we should use two virtual nodes at the top and the bottom of the grid connected to every node in the top and
+     * the bottom rows respectively.
+     *  Then we can just check if the top and the bottom nodes are connected.
+     *
+     */
     public boolean percolates() {
-        // the last row has at least one root in common with first row?
-        int size = grid.length;
-        if (size == 1) {
+        if (grid.length == 1) {
             return grid[0][0];
         }
-        for (var row = 1; row <= size; row++) {
-            for (var column = 1; column <= size; column++) {
-                boolean siteTop = grid[1][column - 1];
-                boolean siteBottom = grid[size - 1][row - 1];
-                int rootTop = toIndex(1, column);
-                int rootBottom = toIndex(size, row);
-                if (siteTop && siteBottom && wquUF.connected(rootTop, rootBottom)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return  wquUF.connected(bottomVirtualIndex, topVirtualIndex);
     }
 
     private String print() {
@@ -138,22 +159,24 @@ public class Percolation {
         Percolation percolation = new Percolation(size);
 
         percolation.open(2, 3);
-        StdOut.println("is 1,1 open? " + percolation.isOpen(1, 1));
-        StdOut.println("is 2,3 open? " + percolation.isOpen(2, 3));
-        StdOut.println("is 1,1 full? " + percolation.isFull(1, 1));
-        StdOut.println("is 2,3 full? " + percolation.isFull(2, 3));
-        percolation.open(2, 3);
+        StdOut.println("[false]\tis 1,1 open?\t\t" + percolation.isOpen(1, 1));
+        StdOut.println("[true]\tis 2,3 open?\t\t" + percolation.isOpen(2, 3));
+        StdOut.println("[false]\tis 1,1 full?\t\t" + percolation.isFull(1, 1));
+        StdOut.println("[false]\tis 2,3 full?\t\t" + percolation.isFull(2, 3));
         percolation.open(2, 3);
         percolation.open(2, 3);
 
-        StdOut.println(percolation.percolates() + " = false");
-        StdOut.println("numberOfOpenSites: " + percolation.numberOfOpenSites());
+        StdOut.println("[false]\tpercolates?\t\t\t" + percolation.percolates());
+        StdOut.println("[1]\t\tnumberOfOpenSites:\t" + percolation.numberOfOpenSites());
 
         percolation.open(1, 3);
         percolation.open(3, 3);
-        StdOut.println("is 2,3 full? " + percolation.isFull(2, 3));
-        StdOut.println("numberOfOpenSites: " + percolation.numberOfOpenSites());
-        StdOut.println(percolation.percolates() + " = true");
+        StdOut.println("[true]\tis 2,3 full?\t\t" + percolation.isFull(2, 3));
+        StdOut.println("[3]\t\tnumberOfOpenSites:\t" + percolation.numberOfOpenSites());
+        StdOut.println("[true]\tpercolates?\t\t\t" + percolation.percolates());
+        percolation.open(3, 1);
+        StdOut.println("[false]\tis 3,1 full?\t\t" + percolation.isFull(3, 1));
+
         StdOut.println(percolation.print());
 
     }
