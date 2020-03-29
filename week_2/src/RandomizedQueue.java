@@ -43,38 +43,40 @@ public class RandomizedQueue<Item> implements Iterable<Item> {
     public Item dequeue() {
         if (isEmpty()) throw new NoSuchElementException("empty queue!");
 
-        int index = StdRandom.uniform(0, current - 1);
-        Item item = list[index];
-
-        if (current == 1) {
-            // only one item
-            list[index] = null;
-        } else {
-            // swap with current, to avoid holes
-            list[index] = list[current];
-            int max = current - 1;
-            Item lastItem = null;
-            while (lastItem == null) {
-                lastItem = list[max];
-                StdOut.println("\t\tmax=" + max + " - lastItem="+lastItem);
-
-                max--;
-            }
-            StdOut.println(" replacing " + index + " with " + lastItem + " from " + max);
-            StdOut.println(" ---> return " + item);
-            list[index] = lastItem;
-            list[max+1] = null;
-
-            if (current == list.length / 4) resize(list.length / 2);
-        }
         current--;
+
+        if (current == 0) {
+            // only one item
+            Item item = list[0];
+            list[0] = null;
+            return item;
+        }
+
+        int index = StdRandom.uniform(0, current);
+        Item item = list[index];
+        // swap with current, to avoid holes
+        int max = current;
+        Item lastItem = null;
+        while (lastItem == null) {
+            lastItem = list[max];
+//                StdOut.println("\t\tmax=" + max + " - lastItem="+lastItem);
+
+            max--;
+        }
+//            StdOut.println(" replacing " + index + " with " + lastItem + " from " + max);
+//            StdOut.println(" ---> return " + item);
+        list[index] = lastItem;
+        list[max + 1] = null;
+
+        if (current == list.length / 4) resize(list.length / 2);
+
         return item;
     }
 
     // return a random item (but do not remove it)
     public Item sample() {
         if (isEmpty()) throw new NoSuchElementException("empty queue!");
-        int index = StdRandom.uniform(0, current - 1);
+        int index = current == 1 ? 0 : StdRandom.uniform(0, current - 1);
         return list[index];
     }
 
@@ -103,6 +105,7 @@ public class RandomizedQueue<Item> implements Iterable<Item> {
             now++;
             return item;
         }
+
     }
 
     private String print() {
@@ -122,17 +125,29 @@ public class RandomizedQueue<Item> implements Iterable<Item> {
 
 
         randomizedQueue.enqueue(462);
-        randomizedQueue.enqueue(366);
-        randomizedQueue.enqueue(72);
-        StdOut.println("[3]\t" + randomizedQueue.size());
-        randomizedQueue.enqueue(390);
-        randomizedQueue.enqueue(256);
-        StdOut.println(randomizedQueue.print());
+//        randomizedQueue.dequeue();
+        StdOut.println("[462]\t" + randomizedQueue.sample());
 
-        StdOut.println(randomizedQueue.dequeue());
-        StdOut.println(randomizedQueue.print());
+//        randomizedQueue.isEmpty()     ==> true
+//        randomizedQueue.isEmpty()     ==> true
+//        randomizedQueue.size()        ==> 0
+//        rq.size()        ==> 0
+//        rq.isEmpty()     ==> true
+//        rq.size()        ==> 0
+//        rq.isEmpty()     ==> true
+//        randomizedQueue.enqueue(240)
+//        rq.dequeue()     ==> 240
+//        rq.size()        ==> 1
 
-        StdOut.println(randomizedQueue.dequeue());
+//        StdOut.println("[3]\t" + randomizedQueue.size());
+//        randomizedQueue.enqueue(390);
+//        randomizedQueue.enqueue(256);
+//        StdOut.println(randomizedQueue.print());
+//
+//        StdOut.println(randomizedQueue.dequeue());
+//        StdOut.println(randomizedQueue.print());
+//
+//        StdOut.println(randomizedQueue.dequeue());
 
 
 //        StdOut.println("[true]\t" + randomizedQueue.isEmpty());
