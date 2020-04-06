@@ -9,14 +9,17 @@ public class FastCollinearPoints {
 
     public FastCollinearPoints(Point[] points) {
         if (points == null) throw new IllegalArgumentException("points is null");
+        if (points.length == 0) {
+            results = new LineSegment[0];
+            return;
+        }
+
         LineSegment[] allSegments = findSegments(points);
         results = new LineSegment[counter];
+
+        // remove null segments
         var j = 0;
-//        StdOut.println("all segments  " + allSegments.length);
-
         for (var i = 0; i < allSegments.length; i++) {
-//            StdOut.println("check " + allSegments[i]);
-
             if (allSegments[i] != null) {
                 results[j] = allSegments[i];
                 j++;
@@ -24,92 +27,136 @@ public class FastCollinearPoints {
         }
     }
 
-    private LineSegment[] findSegments(Point[] points) {
-        LineSegment[] atMostResults = new LineSegment[points.length];
-        int size = points.length - 1;
-        Point[] sortedPoints = new Point[size];
+    public void resetCache(Point[] cache) {
+        Point next;
+        int i;
+        for (i = 0; i < cache.length; i++) {
+//            StdOut.println("resetting "+i);
+            next = cache[i];
+            if (next == null) return;
+            cache[i] = null;
+        }
+    }
 
-        double[] slopes = new double[points.length];
+    public int sizeOfCache(Point[] cache) {
+        Point next;
+        int i;
+        for (i = 0; i < cache.length; i++) {
+            next = cache[i];
+            if (next == null) return i;
+        }
+        return i + 1;
+    }
 
-//        Double previousSlope = Double.NEGATIVE_INFINITY;
+    public LineSegment[] findSegments(Point[] _points) {
+//        StdOut.println("Input:");
+//        printArray(_points);
 
-        for (var p = 0; p < size - 1; p++) {
+        int size = _points.length;
+        LineSegment[] atMostResults = new LineSegment[size];
+        Point[] cache = new Point[size];
+
+        Point[] sortedBySlopePoints = new Point[size - 1];
+        Point[] points = new Point[size];
+        copyOtherPoints(_points, points, -1);
+        Arrays.sort(points);
+
+//        StdOut.println("Sorted:");
+//        printArray(points);
+
+        for (var p = 0; p < size; p++) {
             Point pointP = points[p];
+            cache[0] = pointP;
+            int cacheCounter = 1;
 
             if (pointP == null) {
                 throw new IllegalArgumentException("point at is null at " + p);
             }
 
             // mutation ;-(
-//            StdOut.println("copy " + points.length + " to " + sortedPoints.length + " except " + p);
-            copyOtherPoints(points, sortedPoints, p);
-//            copyOtherPoints(points, sortedPoints, p);
+            copyOtherPoints(points, sortedBySlopePoints, p);
             // sort by slope of P
+            Arrays.sort(sortedBySlopePoints, pointP.slopeOrder());
 
-            Arrays.sort(sortedPoints, pointP.slopeOrder());
-//            Arrays.sort(sortedPoints);
+//            printArray(sortedPoints);
 
-            printArray(sortedPoints);
+            StdOut.println("Working with " + pointP);
+            printArray(cache);
 
-            // TODO: check for duplicates
+            for (var q = 0; q < sortedBySlopePoints.length; q++) {
+                Point current = sortedBySlopePoints[q];
 
-            for (var q = 0; q < size - 1; q++) {
-                Point pointQ = sortedPoints[0];
-                double currentSlope = pointP.slopeTo(pointQ);
+                StdOut.println("\t["+q+"] current " + current);
+                StdOut.print("\t");
+                printArray(cache);
 
-//                StdOut.println("... " + previousSlope + " vs " + currentSlope);
+                if (q == 0) {
+                    cache[cacheCounter] = current;
+//                    StdOut.println("\t1 - cache[" + cacheCounter + "] = " + current);
+                    cacheCounter++;
+                } else if (pointP.slopeTo(current) == pointP.slopeTo(cache[1])) {
+//                    StdOut.println("\tn - cache[" + cacheCounter + "] = " + current);
+                    cache[cacheCounter] = current;
+                    cacheCounter++;
+                } else {
+                    // slope has changed: need to check the cache
+                    boolean done = checkForLines(pointP, cache, atMostResults);
+                    StdOut.println("\t\tslope changed: " + done);
 
-//                if (currentSlope == previousSlope) {
-//                    StdOut.println("skipping " + currentSlope);
-//                    continue;
-//                }
-
-                StdOut.println("proceeding with " + pointP + ", " + pointQ + " = " + currentSlope);
-//                previousSlope = currentSlope;
-
-                Point startPoint = pointP;
-                // candidate as end point
-                Point endPoint = sortedPoints[q++];
-                // actual end point
-                Point previousPoint = endPoint;
-                while (endPoint != null &&
-                        currentSlope == pointP.slopeTo(endPoint)
-                ) {
-                    StdOut.println(" - compare " + startPoint + " to " + endPoint + " = " + startPoint.compareTo(endPoint));
-                    if (startPoint.compareTo(endPoint) > 0) {
-                        // invert points
-                        previousPoint = startPoint;
-                        startPoint = endPoint;
-                        endPoint = sortedPoints[q++];
-                    } else {
-                        previousPoint = endPoint;
-                        endPoint = sortedPoints[q++];
-                    }
-                }
-
-                StdOut.println(" slope: " + startPoint.slopeTo(previousPoint) + " == " + startPoint.slopeTo(pointQ));
-
-
-                if (previousPoint != null) {
-                    atMostResults[counter] = new LineSegment(pointP, previousPoint);
-                    counter++;
-                    break;
+                    if (done) printArray(atMostResults);
+//                    else StdOut.println("\tnext: " + current);
+                    resetCache(cache);
+                    cache[0] = current;
+                    cacheCounter = 1;
                 }
             }
+
+            boolean done = checkForLines(pointP, cache, atMostResults);
+//            StdOut.println("end: " + done);
+//            if (done) printArray(atMostResults);
+//            else printArray(cache);
+
+            resetCache(cache);
         }
+//        StdOut.println("The end");
+//        printArray(atMostResults);
+
         return atMostResults;
     }
 
-    private void printArray(Point[] a) {
+    public boolean checkForLines(Point firstPoint, Point[] cache, LineSegment[] destination) {
+        int sizeOfCache = sizeOfCache(cache);
+        if (sizeOfCache > 2) {
+            Point[] nextSegment = Arrays.copyOf(cache, sizeOfCache - 1);
+            Arrays.sort(nextSegment);
+            //  if pointP is at beginning, take it and the last
+            StdOut.println("\tfirst? " + firstPoint + " in ");
+            printArray(nextSegment);
+            if (nextSegment[0] == firstPoint) {
+                LineSegment segment = new LineSegment(firstPoint, nextSegment[sizeOfCache - 2]);
+                destination[counter] = segment;
+                counter++;
+
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void printArray(Object[] a) {
         StringBuilder sb = new StringBuilder("[ ");
-        for (var i = 0; i < a.length; i++) {
-            sb.append(a[i].toString() + ", ");
+        for (Object point : a) {
+            if (point == null) {
+                sb.append("null, ");
+            } else {
+                sb.append(point.toString() + ", ");
+            }
         }
         sb.append("]");
         StdOut.println(sb);
     }
 
-    private void copyOtherPoints(Point[] from, Point[] to, int except) {
+    public void copyOtherPoints(Point[] from, Point[] to, int except) {
         var j = 0;
         for (var i = 0; i < from.length; i++) {
             if (i != except) {
@@ -126,5 +173,34 @@ public class FastCollinearPoints {
     public LineSegment[] segments() {
         // TODO: null
         return results;
+    }
+
+    /**
+     * Unit tests
+     */
+    public static void main(String[] args) {
+        /* YOUR CODE HERE */
+
+        Point[] fourCollinearY = {new Point(1, 2), new Point(2, 2), new Point(3, 2)};//, new Point(4, 2)};
+        Point[] fourCollinearX = {new Point(3, 8), new Point(3, 1), new Point(3, 5)};//, new Point(3, 8)};
+        Point[] twoLines = {
+                new Point(3, 8), new Point(3, 1), new Point(3, 5), new Point(3, 7),
+                new Point(1, 2), new Point(2, 2), new Point(3, 2), new Point(4, 2)
+        };
+
+//        FastCollinearPoints fcp1 = new FastCollinearPoints(fourCollinearY);
+//        StdOut.println("[1]\tnumber of segments\t" + fcp1.numberOfSegments());
+//        fcp1.printArray(fcp1.segments());
+
+//        FastCollinearPoints fcp2 = new FastCollinearPoints(fourCollinearX);
+//        StdOut.println("[1]\tnumber of segments\t" + fcp2.numberOfSegments());
+//        fcp2.printArray(fcp2.segments());
+
+        FastCollinearPoints fcp3 = new FastCollinearPoints(twoLines);
+        StdOut.println("[2]\tnumber of segments\t" + fcp3.numberOfSegments());
+        fcp3.printArray(fcp3.segments());
+
+//        StdOut.println("[4]\tnumber of segments\t" + fcp1.sizeOfCache(fourCollinearX));
+
     }
 }
