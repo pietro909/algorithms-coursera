@@ -49,6 +49,10 @@ public class LineSegment {
         return p + " -> " + q;
     }
 
+    public double slope() {
+        return p.slopeTo(q);
+    }
+
     /**
      * Throws an exception if called. The hashCode() method is not supported because
      * hashing has not yet been introduced in this course. Moreover, hashing does not
