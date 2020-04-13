@@ -8,6 +8,7 @@ public class Board {
     private final int[] board;
     private final int size;
     private int indexOfZero;
+    private Board twinBoard = null;
 
     // create a board from an n-by-n array of tiles,
     // where tiles[row][col] = tile at (row, col)
@@ -181,6 +182,8 @@ public class Board {
     // a board that is obtained by exchanging any pair of tiles
     // zero is not allowed
     public Board twin() {
+        if (twinBoard != null) return twinBoard;
+
         int[][] nextBoard = toArray();
         int[] indexes = StdRandom.permutation(board.length, board.length);
 
@@ -199,7 +202,8 @@ public class Board {
             }
         }
 
-        return new Board(nextBoard);
+        twinBoard = new Board(nextBoard);
+        return twinBoard;
     }
 
     // unit testing (not graded)
