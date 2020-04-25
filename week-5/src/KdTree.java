@@ -54,6 +54,8 @@ public class KdTree {
         boolean color;
         boolean alignment;
         Node left, right;
+        Node parent;
+        boolean isLower;
 
         Node(Point2D p, boolean v) {
             value = p;
@@ -70,6 +72,7 @@ public class KdTree {
         nonNull(point);
         if (root == null) {
             root = new Node(point, VERTICAL);
+            root.isLower = true; // hack
         } else {
             root = put(point, root);
         }
@@ -80,14 +83,21 @@ public class KdTree {
         if (toLeft) {
             // to the left
             if (destination.left == null) {
-                destination.left = new Node(point, !destination.alignment);
+                Node node = new Node(point, !destination.alignment);
+                node.parent = destination;
+                node.isLower = true;
+                destination.left = node;
             } else {
                 destination.left = put(point, destination.left);
             }
         } else {
             // to the right
             if (destination.right == null) {
-                destination.right = new Node(point, !destination.alignment);
+                Node node = new Node(point, !destination.alignment);
+                node.parent = destination;
+                node.isLower = false;
+                destination.right = node;
+
             } else {
                 destination.right = put(point, destination.right);
             }
@@ -137,13 +147,22 @@ public class KdTree {
         double x = node.value.x();
         double y = node.value.y();
 
-//        StdDraw.setPenRadius(0.002);
+        StdDraw.setPenRadius(0.002);
         if (node.alignment == VERTICAL) {
             StdDraw.setPenColor(Color.RED);
-//            StdDraw.line(x, 0, x, 1);
+            double yLimit = node.parent == null ? 1 : node.parent.value.y();
+            if (node.isLower) {
+                StdDraw.line(x, 0, x, yLimit);
+            } else {
+                StdDraw.line(x, yLimit, x, 1);
+            }
         } else {
             StdDraw.setPenColor(Color.BLUE);
-//            StdDraw.line(0, y, 0, y);
+            if (node.isLower) {
+                StdDraw.line(0, y, node.parent.value.x(), y);
+            } else {
+                StdDraw.line(node.parent.value.x(), y, 1, y);
+            }
         }
         StdDraw.setPenRadius(0.008);
         StdDraw.point(x, y);
@@ -166,8 +185,8 @@ public class KdTree {
     private void range(Node node, Queue<Point2D> queue, RectHV rect) {
         if (node == null) return;
         if (rect.contains(node.value)) {
-            queue.enqueue(node.value);
             range(node.left, queue, rect);
+            queue.enqueue(node.value);
             range(node.right, queue, rect);
         } else {
             if (node.alignment == VERTICAL) {
