@@ -1,14 +1,15 @@
+import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.Point2D;
 import edu.princeton.cs.algs4.SET;
-import edu.princeton.cs.algs4.StdOut;
-import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.RectHV;
+import edu.princeton.cs.algs4.StdRandom;
+import edu.princeton.cs.algs4.StdOut;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public class PointSET {
-    private SET<Point2D> set;
+    private final SET<Point2D> set;
 
     // construct an empty set of points
     public PointSET() {
@@ -44,7 +45,9 @@ public class PointSET {
 
     public void draw()                         // draw all points to standard draw
     {
-        StdDraw.setPenRadius(2.0);
+        StdDraw.setPenColor(StdDraw.BLUE);
+        StdDraw.setPenRadius(0.004);
+
         for (Point2D next : set) {
             StdDraw.point(next.x(), next.y());
         }
@@ -62,7 +65,6 @@ public class PointSET {
                 results[i++] = next;
             }
         }
-        final int size = i;
         return new Iterable<Point2D>() {
             @Override
             public Iterator<Point2D> iterator() {
@@ -104,16 +106,33 @@ public class PointSET {
 
     public static void main(String[] args)                  // unit testing of the methods (optional)
     {
+        StdDraw.enableDoubleBuffering();
+        StdDraw.clear();
+
         PointSET pset1 = new PointSET();
-        pset1.insert(new Point2D(1.0, 2.0));
-        pset1.insert(new Point2D(5.0, 2.0));
-        pset1.insert(new Point2D(3.0, -3.0));
-        pset1.insert(new Point2D(-1.0, -5.0));
-        // pset1.draw();
-        StdOut.println("\tnearest\t[( 1.0, 2.0 )]\t" + pset1.nearest(new Point2D(0.5, 1.5)));
-        StdOut.println("\trange\t[( 1.0, 2.0 ), (5.0, 2.0)]\t");
-        for (Point2D p : pset1.range(new RectHV(0.5, 0.5, 6.0, 3.0))) {
+        for (var i = 0; i < 50; i += 1) {
+            double x = StdRandom.uniform(0, 1.0);
+            double y = StdRandom.uniform(0, 1.0);
+            pset1.insert(new Point2D(x, y));
+        }
+        pset1.draw();
+
+        Point2D pset1Nearest1Query = new Point2D(0.5, 0.75);
+        Point2D pset1Nearest1Result = pset1.nearest(pset1Nearest1Query);
+        StdOut.println("\tnearest\t[" + pset1Nearest1Query + "]\t" + pset1Nearest1Result);
+        StdDraw.setPenColor(StdDraw.CYAN);
+        StdDraw.setPenRadius(0.001);
+        StdDraw.circle(pset1Nearest1Query.x(), pset1Nearest1Query.y(), pset1Nearest1Query.distanceTo(pset1Nearest1Result));
+        StdDraw.setPenRadius(0.01);
+        StdDraw.point(pset1Nearest1Query.x(), pset1Nearest1Query.y());
+        StdDraw.setPenColor(StdDraw.ORANGE);
+        StdDraw.point(pset1Nearest1Result.x(), pset1Nearest1Result.y());
+        StdDraw.setPenColor();
+//        StdOut.println("\trange\t[( 1.0, 2.0 ), (5.0, 2.0)]\t");
+        for (Point2D p : pset1.range(new RectHV(0.2, 0.5, 0.3, 0.6))) {
             StdOut.println("\t\t" + p);
         }
+
+        StdDraw.show();
     }
 }
